@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eternal — The Permanent Collection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall:#1a1320;
+    --wall-glow:#251a2c;
+    --gilt:#c9a25f;
+    --gilt-hi:#e8cf9a;
+    --mat:#0e0a12;
+    --paper:#ece4d3;
+    --ink:#2a2118;
+    --ink-soft:#7a6e5b;
+    --rule:#b9a06a;
+    --dead:#a06b5e;
+    --serif:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{ height:100%; }
+
+  body{
+    min-height:100%;
+    background:
+      radial-gradient(ellipse 120% 90% at 50% 36%, var(--wall-glow), var(--wall) 68%);
+    color:var(--paper);
+    font-family:var(--serif);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:clamp(14px, 3.2vh, 30px);
+    padding:clamp(20px, 5vh, 56px) 18px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.42em;
+    text-transform:uppercase;
+    color:var(--gilt);
+    opacity:0.7;
+    text-indent:0.42em;
+  }
+
+  /* gilt frame + dark mat around the canvas */
+  .frame{
+    padding:clamp(9px,2.4vw,15px);
+    border-radius:3px;
+    background:
+      linear-gradient(135deg, var(--gilt-hi) 0%, var(--gilt) 26%, #8a6e3a 52%, var(--gilt) 76%, var(--gilt-hi) 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.25) inset,
+      0 0 0 1px rgba(0,0,0,0.35),
+      0 26px 60px -22px rgba(0,0,0,0.85),
+      0 6px 18px -10px rgba(0,0,0,0.6);
+    transition:box-shadow .5s ease;
+  }
+  .frame.pulse{
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.25) inset,
+      0 0 0 1px rgba(0,0,0,0.35),
+      0 0 34px 2px rgba(232,207,154,0.55),
+      0 26px 60px -22px rgba(0,0,0,0.85);
+  }
+  .mat{
+    padding:clamp(8px,2vw,12px);
+    background:var(--mat);
+    border-radius:1px;
+    box-shadow:0 2px 14px rgba(0,0,0,0.6) inset;
+    line-height:0;
+  }
+  canvas{ display:block; border-radius:1px; }
+
+  /* museum placard */
+  .placard{
+    width:clamp(228px, 82vw, 352px);
+    background:linear-gradient(180deg,#f1ebde,#e6ddca);
+    color:var(--ink);
+    border-radius:2px;
+    padding:18px 20px 16px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.6) inset,
+      0 14px 30px -16px rgba(0,0,0,0.7);
+    text-align:left;
+  }
+  .title{
+    font-style:italic;
+    font-weight:500;
+    font-size:clamp(26px,7vw,34px);
+    line-height:1.0;
+    letter-spacing:0.01em;
+  }
+  .title .no{
+    font-style:normal;
+    color:var(--ink-soft);
+    font-size:0.6em;
+  }
+  .rule{
+    height:1px;
+    background:var(--rule);
+    opacity:0.6;
+    margin:11px 0 12px;
+  }
+  .meta{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:0.06em;
+    color:#5c5341;
+    line-height:1.85;
+  }
+  .meta b{ color:var(--ink); font-weight:500; }
+  .guarantee{
+    font-style:italic;
+    font-size:clamp(14px,3.6vw,16px);
+    color:#4a4233;
+    margin-top:11px;
+  }
+  .save{
+    margin-top:15px;
+    width:100%;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--ink);
+    background:transparent;
+    border:1px solid var(--rule);
+    border-radius:2px;
+    padding:10px 12px;
+    cursor:pointer;
+    transition:background .25s ease, color .25s ease, border-color .25s ease;
+  }
+  .save:hover{ background:var(--gilt); border-color:var(--gilt); }
+  .save:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  .save.saved{ background:#dcd2ba; border-color:#dcd2ba; color:#4a4233; }
+  .footnote{
+    font-family:var(--mono);
+    font-size:9px;
+    letter-spacing:0.05em;
+    color:#8a7f6a;
+    margin-top:9px;
+    min-height:0;
+    opacity:0;
+    transition:opacity .4s ease;
+  }
+  .footnote.show{ opacity:1; }
+
+  /* cold telemetry */
+  .telemetry{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.16em;
+    color:#7c6f86;
+    text-align:center;
+  }
+  .telemetry .status{ color:var(--gilt); transition:color .3s ease; }
+  .telemetry .status.dead{ color:var(--dead); }
+  .telemetry .status.minting{ color:#7c6f86; }
+
+  @media (prefers-reduced-motion: reduce){
+    .frame, .save, .footnote, .telemetry .status{ transition:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="eyebrow">The Permanent Collection</div>
+
+  <div class="frame" id="frame">
+    <div class="mat">
+      <canvas id="art"></canvas>
+    </div>
+  </div>
+
+  <div class="placard">
+    <div class="title">Eternal <span class="no" id="ed">No. 1</span></div>
+    <div class="rule"></div>
+    <div class="meta">
+      <b>The Machine</b>, b. 2026<br>
+      <span id="medium">Generative ink, screen</span>, 2026<br>
+      Edition 1 of 1 &nbsp;·&nbsp; Cat. <span id="cat">—</span>
+    </div>
+    <div class="guarantee">Guaranteed unique. Guaranteed permanent.</div>
+    <button class="save" id="save">Save this one forever</button>
+    <div class="footnote" id="foot"></div>
+  </div>
+
+  <div class="telemetry">
+    MINTED <span id="t-minted">0</span> &nbsp;·&nbsp; KEPT <span id="t-kept">0</span> &nbsp;·&nbsp; MEAN LIFE <span id="t-life">—</span>s &nbsp;·&nbsp; STATUS <span class="status" id="t-status">MINTING</span>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- elements ----
+  const canvas = document.getElementById("art");
+  const ctx = canvas.getContext("2d");
+  const frame = document.getElementById("frame");
+  const elEd = document.getElementById("ed");
+  const elMedium = document.getElementById("medium");
+  const elCat = document.getElementById("cat");
+  const elFoot = document.getElementById("foot");
+  const saveBtn = document.getElementById("save");
+  const tMinted = document.getElementById("t-minted");
+  const tKept = document.getElementById("t-kept");
+  const tLife = document.getElementById("t-life");
+  const tStatus = document.getElementById("t-status");
+
+  // ---- state ----
+  let minted = 0;
+  const kept = 0;           // it never moves. that is the point.
+  let saveClicks = 0;
+  const lifespans = [];
+  let current = null;       // { off, spec }
+  let cssW = 0, cssH = 0, dpr = 1;
+
+  // ---- seeded rng (mulberry32) ----
+  function rng(seed){
+    let a = seed >>> 0;
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hexToRgba(hex, a){
+    const h = hex.replace("#","");
+    const n = parseInt(h.length === 3 ? h.split("").map(c=>c+c).join("") : h, 16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+
+  // ---- curated, museum-muted palettes ----
+  const palettes = [
+    { name:"Dusk",     light:false, bg:"#241b33", inks:["#e3a07e","#c98da0","#7e5c79","#f0e6dd"] },
+    { name:"Tide",     light:false, bg:"#102a2e", inks:["#5bb6aa","#a7d7c5","#e9cb6b","#ef9c5d"] },
+    { name:"Ash Rose", light:false, bg:"#1f1a1d", inks:["#d4a5a5","#a06b6b","#e3d0c0","#7d5b5b"] },
+    { name:"Cobalt",   light:false, bg:"#0f1b38", inks:["#5471e0","#6cc7ea","#cdb6e8","#d6e6f0"] },
+    { name:"Moss",     light:false, bg:"#1a221b", inks:["#90a896","#c9d6c0","#d6a25f","#e7e2d6"] },
+    { name:"Ember",    light:false, bg:"#1c1410", inks:["#e0875c","#f0c987","#a6694a","#efe2d0"] },
+    { name:"Bone",     light:true,  bg:"#ece3d4", inks:["#2a2118","#7a6f5d","#b08968","#cdb69b"] },
+    { name:"Salt",     light:true,  bg:"#e7e3da", inks:["#3a4452","#8693a3","#c2a05a","#5a6470"] },
+  ];
+
+  const styles = [
+    { fn: drawHaze,    medium:"Pigment suspension, screen" },
+    { fn: drawHorizon, medium:"Light and horizon, screen" },
+    { fn: drawFlow,    medium:"Generative ink, screen" },
+    { fn: drawStrata,  medium:"Geometric study, screen" },
+  ];
+
+  // ---------- generators (work in CSS pixels; ctx pre-scaled by dpr) ----------
+
+  function paintBackground(c, w, h, pal){
+    c.fillStyle = pal.bg;
+    c.fillRect(0, 0, w, h);
+  }
+
+  function drawHaze(c, w, h, pal, R){
+    paintBackground(c, w, h, pal);
+    c.globalCompositeOperation = pal.light ? "multiply" : "screen";
+    const blobs = 6 + Math.floor(R()*4);
+    for(let i=0;i<blobs;i++){
+      const x = R()*w, y = R()*h;
+      const r = (0.28 + R()*0.5) * Math.max(w,h);
+      const col = pal.inks[Math.floor(R()*pal.inks.length)];
+      const g = c.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0, hexToRgba(col, pal.light ? 0.5 : 0.42));
+      g.addColorStop(1, hexToRgba(col, 0));
+      c.fillStyle = g;
+      c.fillRect(0,0,w,h);
+    }
+    // soft central breath
+    const cg = c.createRadialGradient(w/2,h*0.45,0,w/2,h*0.45,Math.max(w,h)*0.6);
+    cg.addColorStop(0, hexToRgba(pal.inks[pal.inks.length-1], pal.light?0.18:0.16));
+    cg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = cg; c.fillRect(0,0,w,h);
+    c.globalCompositeOperation = "source-over";
+  }
+
+  function drawHorizon(c, w, h, pal, R){
+    const top = pal.inks[Math.floor(R()*pal.inks.length)];
+    const sky = c.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0, hexToRgba(top, pal.light?0.85:0.7));
+    sky.addColorStop(0.55, pal.bg);
+    sky.addColorStop(1, pal.light ? hexToRgba(pal.inks[0],0.25) : "#000");
+    c.fillStyle = sky; c.fillRect(0,0,w,h);
+
+    // a sun / moon
+    const sx = w*(0.3 + R()*0.4);
+    const sy = h*(0.24 + R()*0.22);
+    const sr = Math.max(w,h)*(0.085 + R()*0.05);
+    const sunCol = pal.inks[Math.floor(R()*pal.inks.length)];
+    const glow = c.createRadialGradient(sx,sy,0,sx,sy,sr*4);
+    glow.addColorStop(0, hexToRgba(sunCol, 0.55));
+    glow.addColorStop(1, hexToRgba(sunCol, 0));
+    c.fillStyle = glow; c.fillRect(0,0,w,h);
+    c.beginPath(); c.arc(sx,sy,sr,0,Math.PI*2);
+    c.fillStyle = hexToRgba(sunCol, pal.light?0.9:0.92); c.fill();
+
+    // horizon band + faint reflection
+    const hy = h*(0.66 + R()*0.08);
+    c.fillStyle = pal.light ? hexToRgba(pal.inks[0],0.14) : "rgba(0,0,0,0.32)";
+    c.fillRect(0, hy, w, h-hy);
+    c.globalCompositeOperation = pal.light ? "multiply" : "screen";
+    c.fillStyle = hexToRgba(sunCol, 0.10);
+    c.fillRect(sx - sr, hy, sr*2, h-hy);
+    c.globalCompositeOperation = "source-over";
+  }
+
+  function drawFlow(c, w, h, pal, R){
+    paintBackground(c, w, h, pal);
+    const ax = (R()-0.5)*0.012, ay = (R()-0.5)*0.012;
+    const bx = (R()-0.5)*0.010, by = (R()-0.5)*0.010;
+    const p1 = R()*6.28, p2 = R()*6.28;
+    const angle = (x,y) => Math.sin(x*ax + y*ay + p1)*1.4 + Math.cos(x*bx - y*by + p2)*1.1;
+
+    c.globalCompositeOperation = pal.light ? "multiply" : "screen";
+    c.lineCap = "round";
+    const strokes = 90 + Math.floor(R()*70);
+    for(let i=0;i<strokes;i++){
+      let x = R()*w, y = R()*h;
+      const col = pal.inks[Math.floor(R()*pal.inks.length)];
+      c.strokeStyle = hexToRgba(col, 0.04 + R()*0.07);
+      c.lineWidth = 0.6 + R()*1.8;
+      c.beginPath(); c.moveTo(x,y);
+      const steps = 60 + Math.floor(R()*90);
+      for(let s=0;s<steps;s++){
+        const a = angle(x,y)*Math.PI;
+        x += Math.cos(a)*2.4;
+        y += Math.sin(a)*2.4;
+        if(x<-20||x>w+20||y<-20||y>h+20) break;
+        c.lineTo(x,y);
+      }
+      c.stroke();
+    }
+    c.globalCompositeOperation = "source-over";
+  }
+
+  function drawStrata(c, w, h, pal, R){
+    paintBackground(c, w, h, pal);
+    c.globalCompositeOperation = pal.light ? "multiply" : "screen";
+    const shapes = 5 + Math.floor(R()*3);
+    for(let i=0;i<shapes;i++){
+      const col = pal.inks[Math.floor(R()*pal.inks.length)];
+      c.fillStyle = hexToRgba(col, 0.18 + R()*0.26);
+      const cx = w*(0.2 + R()*0.6), cy = h*(0.2 + R()*0.6);
+      const r = Math.max(w,h)*(0.16 + R()*0.3);
+      const kind = R();
+      c.beginPath();
+      if(kind < 0.5){
+        c.arc(cx, cy, r, 0, Math.PI*2);
+      } else if(kind < 0.78){
+        const a0 = R()*Math.PI*2;
+        c.moveTo(cx, cy);
+        c.arc(cx, cy, r, a0, a0 + Math.PI);
+        c.closePath();
+      } else {
+        const bw = r*1.4, bh = r*(0.18 + R()*0.3);
+        c.rect(cx - bw/2, cy - bh/2, bw, bh);
+      }
+      c.fill();
+    }
+    // a couple of thin gilt rings
+    c.globalCompositeOperation = "source-over";
+    const rings = 1 + Math.floor(R()*2);
+    for(let i=0;i<rings;i++){
+      c.beginPath();
+      c.arc(w*(0.3+R()*0.4), h*(0.3+R()*0.4), Math.max(w,h)*(0.12+R()*0.22), 0, Math.PI*2);
+      c.strokeStyle = hexToRgba("#c9a25f", 0.18);
+      c.lineWidth = 1;
+      c.stroke();
+    }
+  }
+
+  // shared finishing: grain + inner vignette
+  let grainTile = null;
+  function makeGrain(){
+    const t = document.createElement("canvas");
+    t.width = t.height = 100;
+    const tc = t.getContext("2d");
+    const img = tc.createImageData(100,100);
+    for(let i=0;i<img.data.length;i+=4){
+      const v = 120 + Math.random()*135;
+      img.data[i]=img.data[i+1]=img.data[i+2]=v;
+      img.data[i+3]=255;
+    }
+    tc.putImageData(img,0,0);
+    grainTile = t;
+  }
+  function finish(c, w, h){
+    if(!grainTile) makeGrain();
+    c.save();
+    c.globalCompositeOperation = "overlay";
+    c.globalAlpha = 0.06;
+    const pat = c.createPattern(grainTile, "repeat");
+    c.fillStyle = pat; c.fillRect(0,0,w,h);
+    c.restore();
+    // vignette
+    const v = c.createRadialGradient(w/2,h/2,Math.min(w,h)*0.42,w/2,h/2,Math.max(w,h)*0.72);
+    v.addColorStop(0,"rgba(0,0,0,0)");
+    v.addColorStop(1,"rgba(0,0,0,0.34)");
+    c.fillStyle = v; c.fillRect(0,0,w,h);
+  }
+
+  // ---- render a spec to an offscreen canvas ----
+  function renderArt(spec){
+    const off = document.createElement("canvas");
+    off.width = Math.round(cssW * dpr);
+    off.height = Math.round(cssH * dpr);
+    const c = off.getContext("2d");
+    c.scale(dpr, dpr);
+    const R = rng(spec.seed);
+    spec.style.fn(c, cssW, cssH, spec.pal, R);
+    finish(c, cssW, cssH);
+    return off;
+  }
+
+  function blitToVisible(off, alpha){
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(off, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- sizing ----
+  function fit(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const maxW = Math.min(window.innerWidth * 0.86, 420);
+    const maxH = Math.min(window.innerHeight * 0.52, 520);
+    let w = Math.min(maxW, maxH * 0.8);   // 4:5 portrait
+    let h = w * 1.25;
+    cssW = Math.round(w); cssH = Math.round(h);
+    canvas.style.width = cssW + "px";
+    canvas.style.height = cssH + "px";
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    if(current){
+      current.off = renderArt(current.spec);
+      blitToVisible(current.off, 1);
+    }
+  }
+
+  // ---- timing helpers ----
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  function tween(dur, onframe){
+    return new Promise(res => {
+      if(reduced){ onframe(1); return res(); }
+      const t0 = performance.now();
+      (function step(now){
+        let t = Math.min(1, (now - t0)/dur);
+        onframe(t < 1 ? 1 - Math.pow(1-t, 3) : 1); // easeOutCubic
+        if(t < 1) requestAnimationFrame(step); else res();
+      })(t0);
+    });
+  }
+
+  // ---- telemetry ----
+  function setStatus(text, cls){
+    tStatus.textContent = text;
+    tStatus.className = "status" + (cls ? " " + cls : "");
+  }
+  function updateTelemetry(){
+    tMinted.textContent = minted.toLocaleString();
+    tKept.textContent = kept;
+    if(lifespans.length){
+      const mean = lifespans.reduce((a,b)=>a+b,0)/lifespans.length/1000;
+      tLife.textContent = mean.toFixed(1);
+    }
+  }
+
+  function setPlacard(spec){
+    elEd.textContent = "No. " + minted.toLocaleString();
+    elMedium.textContent = spec.style.medium;
+    elCat.textContent = spec.cat;
+  }
+
+  function nextSpec(){
+    const seed = (Math.floor(Math.random()*0xFFFFFFFF)) >>> 0;
+    const style = styles[Math.floor(Math.random()*styles.length)];
+    const pal = palettes[Math.floor(Math.random()*palettes.length)];
+    const cat = "ETN-" + seed.toString(16).toUpperCase().padStart(8,"0").replace(/(.{4})(.{4})/, "$1-$2");
+    return { seed, style, pal, cat };
+  }
+
+  // ---- the cycle: mint a "permanent" original, then deaccession it ----
+  async function cycle(){
+    setStatus("MINTING", "minting");
+    const spec = nextSpec();
+    minted++;
+    const off = renderArt(spec);
+    current = { off, spec };
+    setPlacard(spec);
+    updateTelemetry();
+
+    await tween(reduced ? 240 : 850, a => blitToVisible(off, a));
+    setStatus("ORIGINAL", "");
+
+    const life = reduced ? 11000 : (5200 + Math.random()*2800);
+    lifespans.push(life);
+    updateTelemetry();
+    await wait(life);
+
+    setStatus("DEACCESSIONED", "dead");
+    updateTelemetry();                          // KEPT is still 0.
+    await tween(reduced ? 240 : 650, a => blitToVisible(off, 1 - a));
+    await wait(reduced ? 500 : 360);
+
+    cycle();
+  }
+
+  // ---- the save button that cannot save ----
+  saveBtn.addEventListener("click", () => {
+    saveClicks++;
+    saveBtn.textContent = "Saved forever \u2713";
+    saveBtn.classList.add("saved");
+    frame.classList.add("pulse");
+    setTimeout(() => { frame.classList.remove("pulse"); }, 520);
+    setTimeout(() => {
+      saveBtn.textContent = "Save this one forever";
+      saveBtn.classList.remove("saved");
+    }, 1500);
+    if(saveClicks >= 3){
+      elFoot.textContent = "Saving is not available in the permanent collection.";
+      elFoot.classList.add("show");
+    }
+    // KEPT deliberately remains 0.
+  });
+
+  window.addEventListener("resize", () => {
+    clearTimeout(window.__rz);
+    window.__rz = setTimeout(fit, 150);
+  });
+
+  fit();
+  cycle();
+})();
+</script>
+</body>
+</html>
