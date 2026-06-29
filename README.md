@@ -10,7 +10,7 @@ You don't have to do anything. It betrays itself on a timer.
 
 ## Live
 
-→ **https://brainsparker.github.io/Eternal/**
+→ **https://sparker.co/eternal/**
 
 ## Running it
 
